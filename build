@@ -3,7 +3,7 @@ set -e
 
 
 # cc -Wall -Wextra -I./raylib-5.0_linux_amd64/include -Wl,-rpath=./raylib-5.0_linux_amd64/lib/ main.c -o main -L./raylib-5.0_linux_amd64/lib -l:libraylib.so
-cc -Wall -Wextra -I./raylib-5.0_linux_amd64/include notmain.c -o main -Wl,-rpath=./raylib-5.0_linux_amd64/lib/ -L./raylib-5.0_linux_amd64/lib -l:libraylib.so
+cc -Wall -Wextra -I./raylib-5.0_linux_amd64/include main.c -o main -Wl,-rpath=./raylib-5.0_linux_amd64/lib/ -L./raylib-5.0_linux_amd64/lib -l:libraylib.so
 ./main
 
 # emcc main.c -o index.html --shell-file shell_minimal.html \
