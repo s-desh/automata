@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+
+
+# cc -Wall -Wextra -I./raylib-5.0_linux_amd64/include -Wl,-rpath=./raylib-5.0_linux_amd64/lib/ main.c -o main -L./raylib-5.0_linux_amd64/lib -l:libraylib.so
+cc -Wall -Wextra -I./raylib-5.0_linux_amd64/include notmain.c -o main -Wl,-rpath=./raylib-5.0_linux_amd64/lib/ -L./raylib-5.0_linux_amd64/lib -l:libraylib.so
+./main
+
+# emcc main.c -o index.html --shell-file shell_minimal.html \
+#     -Iraylib/src \
+#     -Lraylib/src/web \
+#     -lraylib \
+#     -s USE_GLFW=3 -s USE_WEBGL2=1 -s WASM=1 -s FULL_ES3=1 -s ASYNCIFY \
+#     -s FORCE_FILESYSTEM=1 -s ALLOW_MEMORY_GROWTH=1 \
+#     -Wall -Wextra
