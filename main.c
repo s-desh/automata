@@ -3,12 +3,15 @@
 #include "rlgl.h"
 #include "raymath.h"
 #include <string.h>
+#if defined(PLATFORM_WEB)
+    #include <emscripten/emscripten.h>
+#endif
 
 #define GENERATION_WIDTH 81
 #define WINDOW_WIDTH 1000
 #define WINDOW_HEIGHT 1000
 #define BUTTON_SIZE 20
-#define CELL_SIZE 10
+#define CELL_SIZE 8
 // #define GENERATION_WIDTH 100
 const int max_generations = 100;
 const int generation_width = GENERATION_WIDTH;
@@ -32,44 +35,53 @@ typedef struct {
     int value;
 } Button;
 
-Rule rules[7];
-Button buttons[7];
+Rule rules[8];
+Button buttons[8];
 
 void populate_rules(Rule *rules);
 void generate_next_generation(int generation);
 void draw_generations();
 void draw_buttons();
 void check_button_click(Vector2 mousePoint);
+void UpdateDrawFrame();
 
 int main()
 {
 
     populate_rules(rules);
-
+    
+    
     InitWindow(WINDOW_HEIGHT, WINDOW_WIDTH, "automata");
 
-    // Camera2D camera = { 0 };
-    // camera.zoom = 1.0f;
-    Vector2 mousePoint = { 0.0f, 0.0f };
-
-    int frame = 0;
+    #if defined(PLATFORM_WEB)
+        emscripten_set_main_loop(UpdateDrawFrame, 0, 1);
+    #endif
+    // SetTargetFPS(60);
+// #endif
 
     while (!WindowShouldClose())
     {
-        mousePoint = GetMousePosition();
-        check_button_click(mousePoint);
-        BeginDrawing();
-        // DrawFPS(10, 10);
-        DrawText("Mutate any rule cell - ", 100, 12, 15, DARKGRAY);   
-        draw_generations();
-        draw_buttons();
-        ClearBackground(RAYWHITE);
-        EndDrawing();
+        UpdateDrawFrame();       
     }
 
     CloseWindow();
 
     return 0;
+}
+
+void UpdateDrawFrame()
+{
+    
+    Vector2 mousePoint = GetMousePosition();
+    check_button_click(mousePoint);
+    
+    BeginDrawing();
+        ClearBackground(RAYWHITE);
+        DrawText("Mutate any rule cell - ", 100, 12, 15, DARKGRAY);   
+        draw_generations();
+        draw_buttons();
+    EndDrawing();
+
 }
 
 void populate_rules(Rule *rules)
@@ -91,18 +103,15 @@ void generate_next_generation(int generation)
         // *(parents + generation_width/2) = 1;
         current_generation[generation_width/2] = 1;
     }
-    for (int i = 0; i < generation_width; i++)
+    for (int i = 1; i < generation_width; i++)
     {
 
         if (generation != 0 && generation != max_generations - 1)
         {
-            // int left = *(parents + i - 1);
-            // int center = *(parents + i);
-            // int right = *(parents + i + 1);
             int left = parent_generation[i-1];
             int center = parent_generation[i];
             int right = parent_generation[i+1];
-            for (int j = 0; j < 7; j++)
+            for (int j = 0; j <= 7; j++)
             {
                 if (rules[j].val1 == left && rules[j].val2 == center && rules[j].val3 == right)
                 {
@@ -128,7 +137,7 @@ void draw_generations()
         generate_next_generation(j);
         for (int i = 0; i < generation_width; i++)
         {
-            DrawRectangle(i*12, 100+j*12, 10, 10, (current_generation[i] == 1) ? ORANGE : GREEN); 
+            DrawRectangle(i*(CELL_SIZE + 2), 100+j*(CELL_SIZE + 2), CELL_SIZE, CELL_SIZE, (current_generation[i] == 1) ? ORANGE : GREEN); 
 
         } 
     }
