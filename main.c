@@ -3,22 +3,23 @@
 #include "rlgl.h"
 #include "raymath.h"
 #include <string.h>
+#include <math.h>
+#include <stdlib.h>
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
 #endif
 
-#define GENERATION_WIDTH 81
+#define GENERATION_WIDTH 100
 #define WINDOW_WIDTH 1000
 #define WINDOW_HEIGHT 1000
-#define BUTTON_SIZE 20
-#define CELL_SIZE 8
-// #define GENERATION_WIDTH 100
-const int max_generations = 100;
+#define BUTTON_SIZE 10
+#define CELL_SIZE 4
+const int cell_gap = 0.25 * CELL_SIZE; 
+const int max_generations = ((WINDOW_HEIGHT - 100) / (CELL_SIZE + cell_gap)) - 10;
+// const int generation_width = (WINDOW_WIDTH / (CELL_SIZE + cell_gap)) - 2;
 const int generation_width = GENERATION_WIDTH;
 int parent_generation[GENERATION_WIDTH] = {0};
-int current_generation[GENERATION_WIDTH] = {0}; 
-// int parent_active_index[]
-
+int current_generation[GENERATION_WIDTH] = {0};
 
 typedef struct {
     int val1;
@@ -35,14 +36,16 @@ typedef struct {
     int value;
 } Button;
 
-Rule rules[8];
-Button buttons[8];
+Rule rules[27];
+Button buttons[27];
 
 void populate_rules(Rule *rules);
 void generate_next_generation(int generation);
 void draw_generations();
 void draw_buttons();
 void check_button_click(Vector2 mousePoint);
+void check_button_click_save_image(Vector2 mousePoint);
+bool save_image();
 void UpdateDrawFrame();
 
 int main()
@@ -63,7 +66,6 @@ int main()
     {
         UpdateDrawFrame();       
     }
-
     CloseWindow();
 
     return 0;
@@ -74,6 +76,7 @@ void UpdateDrawFrame()
     
     Vector2 mousePoint = GetMousePosition();
     check_button_click(mousePoint);
+    check_button_click_save_image(mousePoint);
     
     BeginDrawing();
         ClearBackground(RAYWHITE);
@@ -94,6 +97,25 @@ void populate_rules(Rule *rules)
     *(rules + 5) = (Rule){0, 1, 0, 1};
     *(rules + 6) = (Rule){0, 0, 1, 1};
     *(rules + 7) = (Rule){0, 0, 0, 0};
+    // *(rules + 8) = (Rule){1, 1, 2, 0};
+    // *(rules + 9) = (Rule){1, 2, 1, 0};
+    // *(rules + 10) = (Rule){1, 2, 2, 0};
+    // *(rules + 11) = (Rule){2, 1, 1, 0};
+    // *(rules + 12) = (Rule){2, 1, 2, 0};
+    // *(rules + 13) = (Rule){2, 2, 1, 0};
+    // *(rules + 14) = (Rule){2, 2, 2, 0};
+    // *(rules + 15) = (Rule){1, 2, 0, 1};
+    // *(rules + 16) = (Rule){2, 1, 0, 1};
+    // *(rules + 17) = (Rule){2, 2, 0, 1};
+    // *(rules + 18) = (Rule){2, 0, 1, 1};
+    // *(rules + 19) = (Rule){2, 0, 2, 1};
+    // *(rules + 20) = (Rule){0, 1, 2, 1};
+    // *(rules + 21) = (Rule){0, 2, 1, 1};
+    // *(rules + 22) = (Rule){0, 2, 2, 1};
+    // *(rules + 23) = (Rule){0, 2, 0, 1};
+    // *(rules + 24) = (Rule){2, 1, 0, 1};
+    // *(rules + 25) = (Rule){2, 2, 0, 1};
+    // *(rules + 26) = (Rule){2, 0, 2, 1};
 }
 
 void generate_next_generation(int generation)
@@ -111,7 +133,7 @@ void generate_next_generation(int generation)
             int left = parent_generation[i-1];
             int center = parent_generation[i];
             int right = parent_generation[i+1];
-            for (int j = 0; j <= 7; j++)
+            for (int j = 0; j <= 26; j++)
             {
                 if (rules[j].val1 == left && rules[j].val2 == center && rules[j].val3 == right)
                 {
@@ -137,7 +159,18 @@ void draw_generations()
         generate_next_generation(j);
         for (int i = 0; i < generation_width; i++)
         {
-            DrawRectangle(i*(CELL_SIZE + 2), 100+j*(CELL_SIZE + 2), CELL_SIZE, CELL_SIZE, (current_generation[i] == 1) ? ORANGE : GREEN); 
+            switch (current_generation[i])
+            {
+                case 0:
+                    DrawRectangle(i*(CELL_SIZE + cell_gap), 100+j*(CELL_SIZE + cell_gap), CELL_SIZE, CELL_SIZE, GREEN);
+                    continue;
+                case 1:
+                    DrawRectangle(i*(CELL_SIZE + cell_gap), 100+j*(CELL_SIZE + cell_gap), CELL_SIZE, CELL_SIZE, ORANGE);
+                    continue;
+                // case 2:
+                //     DrawRectangle(i*(CELL_SIZE + cell_gap), 100+j*(CELL_SIZE + cell_gap), CELL_SIZE, CELL_SIZE, RAYWHITE);
+                //     continue;
+            }
 
         } 
     }
@@ -147,13 +180,25 @@ void draw_buttons()
 {
     for (int i = 0; i <= 7; i++)
     {
-        buttons[i].x = 400+i*24;
+        buttons[i].x = 400+i*(BUTTON_SIZE + cell_gap);
         buttons[i].y = 12;
-        buttons[i].width = 20;
-        buttons[i].height = 20;
+        buttons[i].width = BUTTON_SIZE;
+        buttons[i].height = BUTTON_SIZE;
         buttons[i].value = rules[i].result;
-        DrawRectangle(buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height, (buttons[i].value == 1) ? ORANGE : GREEN);
+        switch (buttons[i].value)
+        {
+            case 0:
+                DrawRectangle(buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height, GREEN);
+                continue;
+            case 1:
+                DrawRectangle(buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height, ORANGE);
+                continue;
+            // case 2:
+            //     DrawRectangle(buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height, RAYWHITE);
+            //     break;
+        }
     }
+    DrawRectangle(400, 40, 100, 20, GRAY);
 }
 
 void check_button_click(Vector2 mousePoint)
@@ -169,10 +214,46 @@ void check_button_click(Vector2 mousePoint)
 
         if (buttonact)
         {
-            buttons[i].value = !buttons[i].value;
+            buttons[i].value = (buttons[i].value + 1) % 2;
             rules[i].result = buttons[i].value;
             buttonact = false;
             break;
         }
     }
+}
+
+void check_button_click_save_image(Vector2 mousePoint)
+{
+    bool buttonact = false;
+        
+    if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){400, 40, 100, 20}))
+    {
+        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) buttonact = true;
+    }
+
+    if (buttonact)
+    {
+        save_image();
+        buttonact = false;
+    }
+}
+
+bool save_image()
+{
+    unsigned char *imgData = rlReadScreenPixels(WINDOW_WIDTH, WINDOW_HEIGHT);
+    // save image
+
+    Image image = {
+        .data = imgData,
+        .width = WINDOW_WIDTH,
+        .height = WINDOW_HEIGHT,
+        .mipmaps = 1,
+        .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8
+    };
+
+    ExportImage(image, "automata.png");
+
+    RL_FREE(imgData);
+
+
 }
