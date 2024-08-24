@@ -5,6 +5,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include <time.h>
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
 #endif
@@ -12,8 +13,8 @@
 #define GENERATION_WIDTH 100
 #define WINDOW_WIDTH 1000
 #define WINDOW_HEIGHT 1000
-#define BUTTON_SIZE 10
-#define CELL_SIZE 4
+#define BUTTON_SIZE 20
+#define CELL_SIZE 5
 const int cell_gap = 0.25 * CELL_SIZE; 
 const int max_generations = ((WINDOW_HEIGHT - 100) / (CELL_SIZE + cell_gap)) - 10;
 // const int generation_width = (WINDOW_WIDTH / (CELL_SIZE + cell_gap)) - 2;
@@ -36,8 +37,8 @@ typedef struct {
     int value;
 } Button;
 
-Rule rules[27];
-Button buttons[27];
+Rule rules[8];
+Button buttons[8];
 
 void populate_rules(Rule *rules);
 void generate_next_generation(int generation);
@@ -47,6 +48,7 @@ void check_button_click(Vector2 mousePoint);
 void check_button_click_save_image(Vector2 mousePoint);
 bool save_image();
 void UpdateDrawFrame();
+const char* generate_random_name();
 
 int main()
 {
@@ -80,11 +82,11 @@ void UpdateDrawFrame()
     
     BeginDrawing();
         ClearBackground(RAYWHITE);
-        DrawText("Mutate any rule cell - ", 100, 12, 15, DARKGRAY);   
+        DrawText("Build your automaton", 50, 12, 20, RED);
+        DrawText("Mutate any rule cell - ", 50, 40, 20, DARKGRAY);   
         draw_generations();
         draw_buttons();
     EndDrawing();
-
 }
 
 void populate_rules(Rule *rules)
@@ -133,7 +135,7 @@ void generate_next_generation(int generation)
             int left = parent_generation[i-1];
             int center = parent_generation[i];
             int right = parent_generation[i+1];
-            for (int j = 0; j <= 26; j++)
+            for (int j = 0; j <= 7; j++)
             {
                 if (rules[j].val1 == left && rules[j].val2 == center && rules[j].val3 == right)
                 {
@@ -180,8 +182,8 @@ void draw_buttons()
 {
     for (int i = 0; i <= 7; i++)
     {
-        buttons[i].x = 400+i*(BUTTON_SIZE + cell_gap);
-        buttons[i].y = 12;
+        buttons[i].x = 300+i*(BUTTON_SIZE + cell_gap);
+        buttons[i].y = 40;
         buttons[i].width = BUTTON_SIZE;
         buttons[i].height = BUTTON_SIZE;
         buttons[i].value = rules[i].result;
@@ -198,7 +200,10 @@ void draw_buttons()
             //     break;
         }
     }
-    DrawRectangle(400, 40, 100, 20, GRAY);
+
+    // save image button
+    DrawRectangle(50, 65, 100, 20, GRAY);
+    DrawText("Save image!", 60, 70, 12, RAYWHITE);   
 }
 
 void check_button_click(Vector2 mousePoint)
@@ -226,7 +231,7 @@ void check_button_click_save_image(Vector2 mousePoint)
 {
     bool buttonact = false;
         
-    if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){400, 40, 100, 20}))
+    if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){50, 65, 100, 20}))
     {
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) buttonact = true;
     }
@@ -238,22 +243,71 @@ void check_button_click_save_image(Vector2 mousePoint)
     }
 }
 
+const char* generate_random_name()
+{
+    const char* names[] = {
+    "Weaver", "Symmetry", "Pixelor", "Fracton", "Automaton", 
+    "Quanta", "Tessera", "Chaos", "Nexor", "Matrix",
+    "Entropy", "Lattice", "Echora", "Patternix", "Cellor",
+    "Archa", "Turinga", "Mosaic", "Algos", "Circuitor"
+    };
+    
+    // Get the number of names
+    int numNames = sizeof(names) / sizeof(names[0]);
+    
+    // Seed the random number generator
+    srand(time(NULL));
+    
+    // Randomly select a name
+    int randomIndex = rand() % numNames;
+
+    return names[randomIndex];
+}
+
 bool save_image()
 {
     unsigned char *imgData = rlReadScreenPixels(WINDOW_WIDTH, WINDOW_HEIGHT);
     // save image
 
-    Image image = {
-        .data = imgData,
-        .width = WINDOW_WIDTH,
-        .height = WINDOW_HEIGHT,
+    // Define the region you want to crop (top-left corner and dimensions)
+    int cropX = 0; // x-coordinate of the top-left corner of the crop region
+    int cropY = 100;  // y-coordinate of the top-left corner of the crop region
+    int cropWidth = generation_width * (CELL_SIZE + cell_gap);  // width of the crop region
+    int cropHeight = WINDOW_HEIGHT - 100; // height of the crop region
+
+    unsigned char *croppedData = (unsigned char *)malloc(cropWidth * cropHeight * 4); // Assuming 4 bytes per pixel (R8G8B8A8)
+
+    // Copy the pixels from the original image to the cropped image buffer
+    for (int y = 0; y < cropHeight; y++)
+    {
+        for (int x = 0; x < cropWidth; x++)
+        {
+            int srcIndex = ((cropY + y) * WINDOW_WIDTH + (cropX + x)) * 4;
+            int dstIndex = (y * cropWidth + x) * 4;
+
+            croppedData[dstIndex] = imgData[srcIndex];         // R
+            croppedData[dstIndex + 1] = imgData[srcIndex + 1]; // G
+            croppedData[dstIndex + 2] = imgData[srcIndex + 2]; // B
+            croppedData[dstIndex + 3] = imgData[srcIndex + 3]; // A
+        }
+    }
+
+    // Create the cropped image object
+    Image croppedImage = {
+        .data = croppedData,
+        .width = cropWidth,
+        .height = cropHeight,
         .mipmaps = 1,
         .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8
     };
 
-    ExportImage(image, "automata.png");
+    const char* randomName = generate_random_name();
+
+    ImageDrawText(&croppedImage, randomName, 10, 10, 20, RED);
+
+    ExportImage(croppedImage, "automata.png");
 
     RL_FREE(imgData);
-
+    RL_FREE(croppedData);
 
 }
